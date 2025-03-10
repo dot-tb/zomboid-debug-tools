@@ -1,0 +1,6 @@
+version=1
+id=3440927055
+title=Temperature and Wetness NaN fix
+description=Help fix a rare bug where the temperature systems stops working.
+tags=Build 42
+visibility=public
