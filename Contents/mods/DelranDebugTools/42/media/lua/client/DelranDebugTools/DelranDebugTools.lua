@@ -19,19 +19,30 @@ local function FixWetnessBugOnItem(clothingItem)
   end
 end
 
----@param player IsoPlayer
-local function FixWetnessBugOnPlayer(player)
+---@param body BodyDamage
+local function PlayerHasWetnessBug(body)
   dprint("Checking player for wetness bug.");
-  local body = player:getBodyDamage();
   local wetness = body:getWetness();
   local temperature = body:getTemperature();
-  if wetness ~= wetness or temperature ~= temperature then
-    dprint("Found NaN wetness value on player");
-    body:getThermoregulator():reset();
-    body:setWetness(0);
-    dprint("Player fixed")
-  else
-    dprint("No wetness/temp NaN found on the player ");
+  return wetness ~= wetness or temperature ~= temperature;
+end
+
+---@param body BodyDamage
+local function FixWetnessBugOnPlayer(body)
+  body:getThermoregulator():reset();
+  body:setWetness(0);
+  dprint("Player fixed")
+end
+
+---@param player IsoPlayer
+local function FixAllClothingAndPlayer(player)
+  local body = player:getBodyDamage();
+  if (PlayerHasWetnessBug(body)) then
+    local clothingItems = player:getInventory():getItemsFromCategory("Clothing");
+    for i = 1, clothingItems:size() - 1, 1 do
+      clothingItems:get(i):setWetness(0);
+    end
+    FixWetnessBugOnPlayer(body);
   end
 end
 
@@ -65,8 +76,7 @@ end
 ---@param objects IsoObject[]
 local function BodyTemperatureFixContextMenu(playerNum, context, objects, test)
   local player = getSpecificPlayer(playerNum);
-
-  context:addOption("Fix Temperature and Wetness", player, FixWetnessBugOnPlayer);
+  context:addOption("Fix Temperature and Wetness", player, FixAllClothingAndPlayer);
 end
 
 -- Only add context menus for debug mode
@@ -74,6 +84,12 @@ if isDebugEnabled() then
   Events.OnFillInventoryObjectContextMenu.Add(WetnessFixContextMenu);
   Events.OnFillWorldObjectContextMenu.Add(BodyTemperatureFixContextMenu);
 end
+
+Events.OnGameStart.Add(function()
+  local player = getPlayer();
+  local body = player:getBodyDamage();
+  FixAllClothingAndPlayer(player);
+end);
 
 -- Guard against reload
 if not ORIGINAL_PERFORM then
@@ -89,8 +105,12 @@ function ISWearClothing:perform()
   ---@type Clothing
   local item = self.item;
   if item then
+    local body = self.character:getBodyDamage();
     FixWetnessBugOnItem(item);
-    FixWetnessBugOnPlayer(self.character);
+    if (PlayerHasWetnessBug(body)) then
+      dprint("Found NaN wetness value on player");
+      FixWetnessBugOnPlayer(body);
+    end
   end
   PATCHED_PERFORM(self);
 end
