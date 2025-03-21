@@ -51,6 +51,46 @@ local function FixAllClothingAndPlayer(player)
   end
 end
 
+---@param player IsoPlayer
+local function FixThirstAndCaloriesNaN(player)
+  local stats = player:getStats();
+  local thirst = stats:getThirst();
+
+  if IsNaN(thirst) then
+    dprint("Found NaN thrist value, reseted to 0")
+    stats:setThirst(0);
+  end
+
+  local nutrition = player:getNutrition();
+  local calories = nutrition:getCalories();
+  local carbohydrates = nutrition:getCarbohydrates();
+  local lipids = nutrition:getLipids();
+  local proteins = nutrition:getProteins();
+
+  if IsNaN(calories) then
+    dprint("Found NaN calories value, reseted to 1000")
+    nutrition:setCalories(1000);
+  end
+  if IsNaN(carbohydrates) then
+    dprint("Found NaN carbohydrates value, reseted to 300")
+    nutrition:setCarbohydrates(300);
+  end
+  if IsNaN(lipids) then
+    dprint("Found NaN lipids value, reseted to 300")
+    nutrition:setLipids(300);
+  end
+  if IsNaN(proteins) then
+    dprint("Found NaN proteins value, reseted to 300")
+    nutrition:setProteins(300);
+  end
+end
+
+---@param player IsoPlayer
+function FixAllNaNs(player)
+  FixAllClothingAndPlayer(player);
+  FixThirstAndCaloriesNaN(player);
+end
+
 ---@param playerNum integer
 ---@param context ISContextMenu
 ---@param items table
@@ -79,14 +119,14 @@ end
 ---@param playerNum integer
 ---@param context ISContextMenu
 ---@param objects IsoObject[]
-local function BodyTemperatureFixContextMenu(playerNum, context, objects, test)
+local function BodyTemperatureFixContextMenu(playerNum, context, objects)
   local player = getSpecificPlayer(playerNum);
-  context:addOption("Fix Temperature and Wetness", player, FixAllClothingAndPlayer);
+  context:addOption("Fix NaN values on player", player, FixAllNaNs);
 end
 ---@param playerNum integer
 ---@param context ISContextMenu
 ---@param objects IsoObject[]
-local function AddAllNaNs(playerNum, context, objects, test)
+local function AddAllNaNs(playerNum, context, objects)
   local player = getSpecificPlayer(playerNum);
   context:addOption("!!! ADD ALL NANS !!!", player, function()
     player:getStats():setThirst(0 / 0);
@@ -107,33 +147,7 @@ end
 
 Events.OnGameStart.Add(function()
   local player = getPlayer();
-  local body = player:getBodyDamage();
-  FixAllClothingAndPlayer(player);
-
-  local stats = player:getStats();
-  local thirst = stats:getThirst();
-  if IsNaN(thirst) then
-    stats:setThirst(0);
-  end
-
-  local nutrition = player:getNutrition();
-  local calories = nutrition:getCalories();
-  local carbohydrates = nutrition:getCarbohydrates();
-  local lipids = nutrition:getLipids();
-  local proteins = nutrition:getProteins();
-
-  if IsNaN(calories) then
-    nutrition:setCalories(1000);
-  end
-  if IsNaN(carbohydrates) then
-    nutrition:setCarbohydrates(300);
-  end
-  if IsNaN(lipids) then
-    nutrition:setLipids(300);
-  end
-  if IsNaN(proteins) then
-    nutrition:setProteins(300);
-  end
+  FixAllNaNs(player);
 end);
 
 -- Guard against reload
