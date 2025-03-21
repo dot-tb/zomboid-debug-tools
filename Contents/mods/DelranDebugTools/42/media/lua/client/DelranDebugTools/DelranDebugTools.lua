@@ -5,12 +5,17 @@ local function dprint(...)
   end
 end
 
+---@param number number
+local function IsNaN(number)
+  return number ~= number;
+end
+
 ---@param clothingItem Clothing
 local function FixWetnessBugOnItem(clothingItem)
   local name = clothingItem:getName();
   dprint("Checking ", name, " for wetness bug.");
   local wetness = clothingItem:getWetness();
-  if wetness ~= wetness then
+  if IsNaN(wetness) then
     dprint("Found NaN wetness value on : ", name);
     clothingItem:setWetness(0);
     dprint("Item fixed")
@@ -24,7 +29,7 @@ local function PlayerHasWetnessBug(body)
   dprint("Checking player for wetness bug.");
   local wetness = body:getWetness();
   local temperature = body:getTemperature();
-  return wetness ~= wetness or temperature ~= temperature;
+  return IsNaN(wetness) or IsNaN(temperature);
 end
 
 ---@param body BodyDamage
@@ -55,7 +60,7 @@ local function WetnessFixContextMenu(playerNum, context, items)
   for _, item in ipairs(inventoryItems) do
     if item:IsClothing() then
       local wetness = item:getWetness();
-      if wetness ~= wetness then
+      if IsNaN(wetness) then
         context:addOption("Fix Wetness value", getSpecificPlayer(playerNum), function()
           --- Is there any way to do a proper type cast here ?
           ---@diagnostic disable-next-line: param-type-mismatch
@@ -78,17 +83,57 @@ local function BodyTemperatureFixContextMenu(playerNum, context, objects, test)
   local player = getSpecificPlayer(playerNum);
   context:addOption("Fix Temperature and Wetness", player, FixAllClothingAndPlayer);
 end
+---@param playerNum integer
+---@param context ISContextMenu
+---@param objects IsoObject[]
+local function AddAllNaNs(playerNum, context, objects, test)
+  local player = getSpecificPlayer(playerNum);
+  context:addOption("!!! ADD ALL NANS !!!", player, function()
+    player:getStats():setThirst(0 / 0);
+    local nutrition = player:getNutrition();
+    nutrition:setCalories(0 / 0);
+    nutrition:setCarbohydrates(0 / 0);
+    nutrition:setLipids(0 / 0);
+    nutrition:setProteins(0 / 0);
+  end);
+end
 
 -- Only add context menus for debug mode
 if isDebugEnabled() then
   Events.OnFillInventoryObjectContextMenu.Add(WetnessFixContextMenu);
   Events.OnFillWorldObjectContextMenu.Add(BodyTemperatureFixContextMenu);
+  Events.OnFillWorldObjectContextMenu.Add(AddAllNaNs);
 end
 
 Events.OnGameStart.Add(function()
   local player = getPlayer();
   local body = player:getBodyDamage();
   FixAllClothingAndPlayer(player);
+
+  local stats = player:getStats();
+  local thirst = stats:getThirst();
+  if IsNaN(thirst) then
+    stats:setThirst(0);
+  end
+
+  local nutrition = player:getNutrition();
+  local calories = nutrition:getCalories();
+  local carbohydrates = nutrition:getCarbohydrates();
+  local lipids = nutrition:getLipids();
+  local proteins = nutrition:getProteins();
+
+  if IsNaN(calories) then
+    nutrition:setCalories(1000);
+  end
+  if IsNaN(carbohydrates) then
+    nutrition:setCarbohydrates(300);
+  end
+  if IsNaN(lipids) then
+    nutrition:setLipids(300);
+  end
+  if IsNaN(proteins) then
+    nutrition:setProteins(300);
+  end
 end);
 
 -- Guard against reload
